@@ -1,13 +1,28 @@
 import dotenv from 'dotenv'
 import dbConnect from './db/index.js';
-
+import express from "express"
 dotenv.config(
     {
         path: "./env"
     }
 )
+let PORT = process.env.PORT || 3000
 
-dbConnect();
+const app = express();
+// Since, async returns a promise
+dbConnect()
+.then(()=>{
+    app.on("Error: ", (error)=>{
+        console.log("Express is not able to connect to Database ", error)
+    })
+
+    app.listen(PORT, ()=>{
+        console.log("App is listening on port "+PORT)
+    })
+})
+.catch((error)=>{
+    console.log("Database Connection FAILED "+error);
+})
 
 
 
