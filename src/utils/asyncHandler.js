@@ -1,12 +1,11 @@
-
 // Wrapping function using Promise
-const asyncHandler = (requestHandler) =>{
-    (req, res, next) => {
-        Promise.resolve(requestHandler(req, res, next)).catch(next)
-    }
-}
+const asyncHandler = (requestHandler) => {
+    return (req, res, next) => {
+        Promise.resolve(requestHandler(req, res, next)).catch(next);
+    };
+};
 
-export { asyncHandler }
+export { asyncHandler };
 // Wrapping function around try-catch block
 // const asyncHandler = (fn) => async (req, res, next) => {
 //     try {

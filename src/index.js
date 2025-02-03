@@ -1,32 +1,27 @@
-import dotenv from 'dotenv'
-import dbConnect from './db/index.js';
-import express from "express"
+import dotenv from "dotenv";
+import dbConnect from "./db/index.js";
+import { app } from "./app.js";
 
-dotenv.config(
-    {
-        path: "./env"
-    }
-)
-let PORT = process.env.PORT || 3000
+dotenv.config({
+    path: "./env",
+});
+const PORT = process.env.PORT || 3000;
 
-const app = express();
+
 // Since, async returns a promise
 dbConnect()
-.then(()=>{
-    app.on("Error: ", (error)=>{
-        console.log("Express is not able to connect to Database ", error)
+    .then(() => {
+        app.on("Error: ", (error) => {
+            console.log("Express is not able to connect to Database ", error);
+        });
+
+        app.listen(PORT, () => {
+            console.log("App is listening on port " + PORT);
+        });
     })
-
-    app.listen(PORT, ()=>{
-        console.log("App is listening on port "+PORT)
-    })
-})
-.catch((error)=>{
-    console.log("Database Connection FAILED "+error);
-})
-
-
-
+    .catch((error) => {
+        console.log("Database Connection FAILED " + error);
+    });
 
 // This approach populates the index.js file, instead write modular code in DB folder
 /*  
