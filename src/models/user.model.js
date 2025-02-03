@@ -45,7 +45,7 @@ const userSchema = new Schema(
         }
     }, 
 {timestamps: true})
-
+//Hashing password during registration
 userSchema.pre("save", async function (next) {
     if(this.isModified("password")){
         // Encryption of Password using Bcrypt 
