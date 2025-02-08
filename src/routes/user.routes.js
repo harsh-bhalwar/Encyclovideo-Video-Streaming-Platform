@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { userRegister, loginUser, logoutUser } from "../controllers/user.controllers.js"
+import { userRegister, loginUser, logoutUser, refreshAccessToken } from "../controllers/user.controllers.js"
 // Imported MULTER middleware to inject before the request goes to register the user
 import upload from "../middlewares/multer.middleware.js"
 import verifyJWT from "../middlewares/auth.middleware.js"
@@ -21,8 +21,12 @@ router.route("/register").post(
     userRegister
 )
 
-router.route("/login").post(loginUser)
+router.route("/login").post(
+    upload.none(),
+    loginUser
+)
 
 // Secured Routes
 router.route("/logout").post(verifyJWT, logoutUser)
+router.route("/refresh-token").post(refreshAccessToken)
 export default router

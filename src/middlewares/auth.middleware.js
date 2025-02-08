@@ -1,13 +1,13 @@
 import jwt from "jsonwebtoken"
-import { ApiError } from "../utils/ApiError";
-import { asyncHandler } from "../utils/asyncHandler";
-import { User } from "../models/user.model";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { User } from "../models/user.model.js";
 
 // If res is not used, it can be replaced as ' _ '
-export const verifyJWT = asyncHandler(async (req, _ , next) => {
+const verifyJWT = asyncHandler(async (req, _ , next) => {
     try {
         // Cookie-parser middleware add cookies() object in request which can be used to access the "accessToken" or in mobile apps take it from header.
-        const accessToken = req.cookies()?.accessToken || req.header("Authorization").replace("Bearer ", "")
+        const accessToken = req.cookies?.accessToken || req.header("Authorization").replace("Bearer ", "")
     
         if(!accessToken){
             throw new ApiError(401, "Unauthorized Request")
@@ -25,6 +25,8 @@ export const verifyJWT = asyncHandler(async (req, _ , next) => {
         // When middleware is successfully executed, move to next function
         next()
     } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid Access Token")
+        throw new ApiError(401, "User is already Logged Out")
     }
 })
+
+export default verifyJWT;
