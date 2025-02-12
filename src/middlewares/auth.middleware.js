@@ -15,7 +15,7 @@ const verifyJWT = asyncHandler(async (req, _ , next) => {
         // Decode the JWT access token 
         const decodedToken = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET)
     
-        const user = User.findById(decodedToken._id).select("-password -refreshToken")
+        const user = await User.findById(decodedToken._id).select("-password -refreshToken")
     
         if(!user){
             throw new ApiError(401, "Invalid Access Token")
@@ -25,7 +25,7 @@ const verifyJWT = asyncHandler(async (req, _ , next) => {
         // When middleware is successfully executed, move to next function
         next()
     } catch (error) {
-        throw new ApiError(401, "User is already Logged Out")
+        throw new ApiError(401, error.message || "User is already Logged Out")
     }
 })
 
