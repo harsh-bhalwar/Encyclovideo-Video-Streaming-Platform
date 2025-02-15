@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteAssetFromCloudinary, getPublicId, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -334,20 +334,31 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Error in finding avatar local path");
     }
 
+    const user = await User.findById(req.user?._id).select("-password -refreshToken");
+    if(!user){
+        throw new ApiError(400, "User cannot be found");
+    }
+    // Extract the old avatar url to get PublicID
+    const avatarURL = user?.avatar;
+    console.log(avatarURL);
+    
     const avatar = await uploadOnCloudinary(avatarLocalPath);
+
     if (!avatar.url) {
-        throw new ApiError(401, "Error whiile uploading avatar on cloudinary");
+        throw new ApiError(401, "Error while uploading avatar on cloudinary");
+    } else {
+        //If new avatar image is successfully updated, delete the old avatar from cloudinary
+        const publicID = getPublicId(avatarURL);
+        console.log(publicID);
+        
+        await deleteAssetFromCloudinary(publicID);
+        
     }
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set: { avatar: avatar.url },
-        },
-        { new: true }
-    ).select("-password -refreshToken");
-    if (!user) {
-        throw new ApiError(401, "User does not exist");
-    }
+
+    // Save the url string to user database
+    user.avatar = avatar.url;
+    await user.save({validateBeforeSave : false})
+    
     return res
         .status(200)
         .json(new ApiResponse(200, "Avatar Update Successfully", user));
@@ -360,23 +371,27 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Error in finding cover image local path");
     }
 
+    const user = await User.findById(req.user._id).select("-password -refreshToken")
+    if(!user){
+        throw new ApiError(401, "Cannot find user")
+    }
+    // Extract cover image from user database
+    const coverImageUrl = user.coverImage
+
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
     if (!coverImage.url) {
         throw new ApiError(
             401,
             "Error whiile uploading cover image on cloudinary"
         );
+    } else {
+        // If cover image is updated successfully, delete the old cover image from cloudinary
+        const publicID = getPublicId(coverImageUrl);
+        await deleteAssetFromCloudinary(publicID);
     }
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set: { coverImage: coverImage.url },
-        },
-        { new: true }
-    ).select("-password -refreshToken");
-    if (!user) {
-        throw new ApiError(401, "User does not exist");
-    }
+    
+    user.coverImage = coverImage.url;
+    await user.save({ validateBeforeSave : false })
     return res
         .status(200)
         .json(new ApiResponse(200, "Cover Image Updated Successfully", user));

@@ -8,7 +8,9 @@ import {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelDetails,
+    getUserWatchHistory,
 } from "../controllers/user.controllers.js";
 // Imported MULTER middleware to inject before the request goes to register the user
 import upload from "../middlewares/multer.middleware.js";
@@ -44,8 +46,11 @@ router
     .patch(verifyJWT, upload.none(), updateAccountDetails);
 router
     .route("/updateAvatar")
-    .post(verifyJWT, upload.single("avatar"), updateUserAvatar);
+    .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 router
     .route("/updateCoverImage")
-    .post(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+    .patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+router.route("/channel/:username").get(verifyJWT, getUserChannelDetails);
+router.route("/watchHistory").get(verifyJWT, getUserWatchHistory);
+
 export default router;

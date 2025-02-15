@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
+import { log } from "console";
 import fs from "fs";
 
 // Configuration
@@ -29,4 +30,18 @@ const uploadOnCloudinary = async function (localFilePath) {
     }
 };
 
-export { uploadOnCloudinary }
+const getPublicId = function(url){
+    return url.split('/').slice(-1)[0].split('.')[0];
+}
+
+const deleteAssetFromCloudinary = async function(publicID){
+    try {
+        const result = await cloudinary.uploader.destroy(publicID);
+        console.log("Result : ", result);
+    } catch (error) {
+        console.log(error.message || "Error in deleting asset from cloudinary");
+    }
+}
+
+
+export { uploadOnCloudinary, getPublicId, deleteAssetFromCloudinary }
