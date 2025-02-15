@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 // Generate access and refresh token for any user by taking "user._id" as parameter
 const generateAccessAndRefreshToken = async (userId) => {
@@ -321,7 +322,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-    .json(
+        .json(
             new ApiResponse(200, user, "Account details updated successfully")
         );
 });
@@ -361,7 +362,10 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
     if (!coverImage.url) {
-        throw new ApiError(401, "Error whiile uploading cover image on cloudinary");
+        throw new ApiError(
+            401,
+            "Error whiile uploading cover image on cloudinary"
+        );
     }
     const user = await User.findByIdAndUpdate(
         req.user?._id,
@@ -378,6 +382,143 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, "Cover Image Updated Successfully", user));
 });
 
+const getUserChannelDetails = asyncHandler(async (req, res) => {
+    const {username} = req.params;
+
+    if(!username?.trim()){
+        throw new ApiError(400, "Username not found!");
+    }
+    // Create an aggregation pipeline that looks up how many subscribers does the channel have, if you are subscribed to that channel or not
+    const channel = await User.aggregate(
+        [   // Stage1: We match the document where username = given username
+            {
+                $match : {
+                    username : username.toLowerCase()
+                }
+            },
+            // Stage 2: Looks up the subsctibers of the channel
+            {
+                $lookup : {
+                    from : "subscriptions",
+                    localField : "_id",
+                    foreignField : "channel",
+                    as : "subscribers"
+                }
+            },
+            // Stage 3: Looks up how many channels have the username subscribed to
+            {
+                $lookup : {
+                    from : "subscriptions",
+                    localField : "_id",
+                    foreignField : "subscriber",
+                    as : "subscribedTo"
+                }
+            },
+            // Stage 4: Add Field of Total Subscribers to the document
+            {
+                $addFields : {
+                    subscribersCount : {
+                        $size : "$subscribers"
+                    },
+                    channelsSubscribedTo : {
+                        $size : "$subscribedTo"
+                    },
+                    isSubscribedTo : {
+                        $cond : {
+                            if : { $in : [req.user?._id, "$subscribers.subscriber"]},
+                            then : true,
+                            else : false
+                        }
+                    }
+                }
+            },
+            // Stage 5: Project what fields to display in output
+            {
+                $project : {
+                    username : 1,
+                    email : 1,
+                    fullName : 1,
+                    avatar : 1,
+                    coverImage : 1,
+                    subscribersCount : 1,
+                    channelsSubscribedTo : 1,
+                    isSubscribedTo : 1
+                }
+            }
+        ]
+    );
+
+    console.log(channel);
+    if(!channel?.length){
+        throw new ApiError(401, "The channel does not exist")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, "Channel Value Fetched", channel[0])
+    )
+    
+});
+
+const getUserWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate(
+        [
+            //Stage1: Filter the logged in user document
+            {
+                $match : {
+                    _id : new mongoose.Types.ObjectId(req.user._id)
+                }
+            },
+            {
+                $lookup : {
+                    from : "videos",
+                    localField : "watchHistory",
+                    foreignField : "_id",
+                    as : "watchHistory",
+                    pipeline : [
+                        {
+                            $lookup : {
+                                from : "users",
+                                localField : "owner",
+                                foreignField : "_id",
+                                as : "owner",
+                                pipeline : [
+                                    {
+                                        $project : {
+                                            username : 1,
+                                            avatar : 1,
+                                            fullName : 1,
+                                            email : 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            $addFields : {
+                                owner : {
+                                    $first : "$owner"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    )
+
+    if(!user){
+        throw new ApiError(401, "Cannot find user watch history")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, "User History Fetched Successfully", user[0].watchHistory)
+    )
+})
+
 export {
     userRegister,
     loginUser,
@@ -387,5 +528,7 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelDetails,
+    getUserWatchHistory
 };
