@@ -195,7 +195,7 @@ const logoutUser = asyncHandler(async (req, res) => {
             },
         },
         {
-            new: true,
+            new: true, // Returns the updated document
         }
     );
 
@@ -333,7 +333,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     if (!avatarLocalPath) {
         throw new ApiError(401, "Error in finding avatar local path");
     }
-
+    // User is already logged-in
     const user = await User.findById(req.user?._id).select("-password -refreshToken");
     if(!user){
         throw new ApiError(400, "User cannot be found");
@@ -348,10 +348,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Error while uploading avatar on cloudinary");
     } else {
         //If new avatar image is successfully updated, delete the old avatar from cloudinary
-        const publicID = getPublicId(avatarURL);
-        console.log(publicID);
-        
-        await deleteAssetFromCloudinary(publicID);
+        await deleteAssetFromCloudinary(avatarURL);
         
     }
 
@@ -411,7 +408,7 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
                     username : username.toLowerCase()
                 }
             },
-            // Stage 2: Looks up the subsctibers of the channel
+            // Stage 2: Looks up the subscribers of the channel
             {
                 $lookup : {
                     from : "subscriptions",

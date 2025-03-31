@@ -49,7 +49,7 @@ const userSchema = new Schema(
 userSchema.pre("save", async function (next) {
     if(this.isModified("password")){
         // Encryption of Password using Bcrypt 
-        this.password = await bcrypt.hash(this.password, 10)
+        this.password = await bcrypt.hash(this.password, 10 /* Salt Round */)
     }
     next()
 })

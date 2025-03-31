@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
-import { log } from "console";
+// import { log } from "console";
 import fs from "fs";
 
 // Configuration
@@ -34,8 +34,9 @@ const getPublicId = function(url){
     return url.split('/').slice(-1)[0].split('.')[0];
 }
 
-const deleteAssetFromCloudinary = async function(publicID){
+const deleteAssetFromCloudinary = async function(url){
     try {
+        const publicID = getPublicId(url);
         const result = await cloudinary.uploader.destroy(publicID);
         console.log("Result : ", result);
     } catch (error) {

@@ -9,7 +9,7 @@ class ApiError extends Error {
     ) {
         super(message); // Calls the parent Error class constructor with this message
         this.statusCode = statusCode; // Stores the HTTP Status Codes (e.g 200, 400, 500 etc.)
-        (this.errors = errors), // Stores the array of addditional error details
+        (this.errors = errors), // Stores the array of additional error details
             (this.data = null), // Placeholder for any data (additional context about the error in the form of object)
             (this.success = false), // Indicates Failure (important for API Response)
             (this.message = message); // Explicitly sets the message

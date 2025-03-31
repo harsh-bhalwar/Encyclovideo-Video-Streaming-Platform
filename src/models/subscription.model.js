@@ -1,5 +1,5 @@
 import {Schema, model} from "mongoose"
-
+// Whenever a user subscribes a channel, a new "subscription" document is created.
 const subscriptionSchema = new Schema(
     {
         subscriber: {
