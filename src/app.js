@@ -26,8 +26,10 @@ app.use(cookieParser());
 
 // Importing Routes from user.routes.js
 import userRouter from "./routes/user.routes.js"
+import subscriptionRouter from "./routes/subscription.routes.js"
 
 // Routes Declaration (Industry Grade)
 app.use("/api/v1/user", userRouter)
+app.use("/api/v1/subscription", subscriptionRouter)
 
 export { app };
