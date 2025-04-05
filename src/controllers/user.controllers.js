@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { deleteAssetFromCloudinary, getPublicId, uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteImageFromCloudinary, getPublicId, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -99,8 +99,8 @@ const userRegister = asyncHandler(async (req, res) => {
         username: username.toLowerCase(),
         email,
         fullName,
-        avatar: avatar.url,
-        coverImage: coverImage?.url || "", // Check whether cover images exists
+        avatar: avatar.secure_url,
+        coverImage: coverImage?.secure_url || "", // Check whether cover images exists
         password: password,
     });
 
@@ -348,12 +348,12 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Error while uploading avatar on cloudinary");
     } else {
         //If new avatar image is successfully updated, delete the old avatar from cloudinary
-        await deleteAssetFromCloudinary(avatarURL);
+        await deleteImageFromCloudinary(avatarURL);
         
     }
 
     // Save the url string to user database
-    user.avatar = avatar.url;
+    user.avatar = avatar.secure_url;
     await user.save({validateBeforeSave : false})
     
     return res
@@ -384,10 +384,10 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     } else {
         // If cover image is updated successfully, delete the old cover image from cloudinary
         const publicID = getPublicId(coverImageUrl);
-        await deleteAssetFromCloudinary(publicID);
+        await deleteImageFromCloudinary(publicID);
     }
     
-    user.coverImage = coverImage.url;
+    user.coverImage = coverImage.secure_url;
     await user.save({ validateBeforeSave : false })
     return res
         .status(200)
