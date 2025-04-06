@@ -4,9 +4,10 @@ import verifyJWT from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
+router.use(verifyJWT)
 // All the subscription routes will be secure
-router.route("/toggleSubscription/:channelId").post(verifyJWT, toggleSubscription)
-router.route("/getSubscribers/:channelId").get(verifyJWT, getUserChannelSubscribers)
-router.route("/getSubscribedChannels/:subscriberId").get(verifyJWT, getSubscribedChannels)
+router.route("/toggleSubscription/:channelId").post(toggleSubscription)
+router.route("/getSubscribers/:channelId").get(getUserChannelSubscribers)
+router.route("/getSubscribedChannels/:subscriberId").get(getSubscribedChannels)
 
 export default router

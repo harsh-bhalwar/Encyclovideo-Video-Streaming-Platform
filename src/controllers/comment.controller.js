@@ -10,10 +10,10 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, sortType = "asc"} = req.query;
 
     if(!videoId || !isValidObjectId(videoId)){
-        throw new ApiError(401, "Invalid Video ID")
+        throw new ApiError(400, "Invalid Video ID")
     }
     if(!["asc", "desc"].includes(sortType)){
-        throw new ApiError(401, "Invalid sortType Value (Can be 'asc' or 'desc').")
+        throw new ApiError(400, "Invalid sortType Value (Can be 'asc' or 'desc').")
     }
     const options = {
         page: parseInt(page),
@@ -61,10 +61,10 @@ const addComment = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Cannot find UserID");
     }
     if (!videoId || !isValidObjectId(videoId)) {
-        throw new ApiError(404, "Incorrect Video ID");
+        throw new ApiError(400, "Incorrect Video ID");
     }
     if (!content?.trim()) {
-        throw new ApiError(401, "Content cannot be empty");
+        throw new ApiError(400, "Content cannot be empty");
     }
 
     try {
@@ -130,9 +130,9 @@ const deleteComment = asyncHandler(async (req, res) => {
     const userId = req?.user?._id;
     const { commentId } = req.params;
 
-    if (!userId) throw new ApiError(403, "Cannot find User ID");
+    if (!userId) throw new ApiError(401, "Cannot find User ID");
     if (!commentId || !isValidObjectId(commentId))
-        throw new ApiError(401, "Invalid Comment ID");
+        throw new ApiError(400, "Invalid Comment ID");
 
     const deletedComment = await Comment.findOneAndDelete(
         {
