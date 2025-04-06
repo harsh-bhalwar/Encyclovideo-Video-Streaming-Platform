@@ -26,8 +26,8 @@ const getAllVideos = asyncHandler(async (req, res) => {
     }
     // console.log(`Page: ${page}, Limit: ${limit}, userID: ${userId}`);
 
-    // Allowed sortinf fields
-    const allowerdSortingValues = [
+    // Allowed sorting fields
+    const allowedSortingValues = [
         "createdAt",
         "updatedAt",
         "likes",
@@ -36,7 +36,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
         "duration",
     ];
 
-    if (!allowerdSortingValues.includes(sortBy)) {
+    if (!allowedSortingValues.includes(sortBy)) {
         throw new ApiError(401, "SortBy Value is incorrect");
     }
     // Set options for pagination
