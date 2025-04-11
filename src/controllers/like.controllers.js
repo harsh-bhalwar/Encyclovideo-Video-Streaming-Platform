@@ -2,174 +2,177 @@ import mongoose, { isValidObjectId } from "mongoose";
 import { Like } from "../models/likes.model.js";
 import { Video } from "../models/video.model.js";
 import { Comment } from "../models/comment.model.js";
-import { Tweet } from "../models/tweet.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { app } from "../app.js";
+import { Dislike } from "../models/dislike.model.js";
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
     const userId = req?.user?._id;
     const { videoId } = req.params;
 
     if (!userId) throw new ApiError(401, "Cannot find User ID");
-    if (!videoId || !isValidObjectId(videoId))
-        throw new ApiError(400, "Cannot find Video ID");
 
-    const userObjId = new mongoose.Types.ObjectId(userId);
-    const videoObjId = new mongoose.Types.ObjectId(videoId);
+    if (!videoId || !isValidObjectId(videoId)) {
+        throw new ApiError(400, "Invalid Video ID");
+    }
 
-    try {
-        const deletedLike = await Like.findOneAndDelete({
-            likedBy: userObjId,
-            video: videoObjId,
+    const video = await Video.findById(videoId).lean();
+    if (!video) {
+        throw new ApiError(
+            404,
+            "No video found with given videoId in database."
+        );
+    }
+
+    let message = "";
+    let updatedVideo = null;
+
+    // Toggle logic
+    const existingLike = await Like.findOne({
+        likedBy: userId,
+        video: videoId,
+    });
+
+    if (existingLike) {
+        await existingLike.deleteOne();
+
+        updatedVideo = await Video.findByIdAndUpdate(
+            videoId,
+            { $pull: { likes: userId } },
+            { new: true }
+        );
+
+        message = `Removed like from video: ${updatedVideo?.title || "unknown"}`;
+    } else {
+        // Check if the user has disliked the video, then remove dislike and then add like
+        await Dislike.findOneAndDelete({
+            dislikedBy: userId,
+            video: videoId,
         });
 
-        if (deletedLike) {
-            const updatedVideo = await Video.findByIdAndUpdate(
-                videoId,
-                {
-                    $pull: {
-                        likes: userId,
-                    },
-                },
-                {
-                    new: true,
-                }
-            );
+        await Like.create({ likedBy: userId, video: videoId });
 
-            return res
-                .status(200) // Correct status code for successful unlike
-                .json(
-                    new ApiResponse(
-                        200,
-                        "Successfully unliked the video with title: " +
-                            updatedVideo.title,
-                        deletedLike
-                    )
-                );
-        } else {
-            await Like.create({
-                likedBy: userObjId,
-                video: videoObjId,
-            });
+        updatedVideo = await Video.findByIdAndUpdate(
+            videoId,
+            { $addToSet: { likes: userId }, $pull: { dislikes: userId } },
+            { new: true }
+        );
 
-            const video = await Video.findByIdAndUpdate(
-                videoId,
-                {
-                    $addToSet: { likes: userId },
-                },
-                {
-                    new: true,
-                }
-            );
-
-            return res
-                .status(200) // Correct status code for successful like
-                .json(
-                    new ApiResponse(
-                        200,
-                        "Liked the video with title: " + video.title
-                    )
-                );
-        }
-    } catch (error) {
-        throw new ApiError(500, "Internal Server Error");
+        message = `Liked the video: ${updatedVideo?.title || "unknown"}`;
     }
+
+    if (!updatedVideo) {
+        throw new ApiError(500, "Failed to update the video’s like list.");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                `${message} | No. of likes: ${updatedVideo.likes?.length}`,
+                updatedVideo
+            )
+        );
 });
 
 const toggleCommentLike = asyncHandler(async (req, res) => {
-    const userId = req?.user?._id
-    const { videoId } = req.params
-    const { commentId } = req.query
+    const userId = req?.user?._id;
+    const { videoId } = req.params;
+    const { commentId } = req.query;
 
-    console.log(userId+"\n"+videoId+"\n"+commentId);
-    
+    if (!userId) throw new ApiError(401, "Cannot find UserID");
+    if (!commentId || !isValidObjectId(commentId))
+        throw new ApiError(401, "Invalid Comment ID");
+    if (!videoId || !isValidObjectId(videoId))
+        throw new ApiError(401, "Invalid VideoID");
 
-    if(!userId) throw new ApiError(401, "Cannot find UserID")
-    if(!commentId || !isValidObjectId(commentId)) throw new ApiError(401, "Invalid Comment ID")
-    if(!videoId || !isValidObjectId(videoId)) throw new ApiError(401, "Invalid VideoID")
+    const comment = await Comment.findById(commentId).populate("video");
 
-    const userObjId = new mongoose.Types.ObjectId(userId)
-    const vidObjId = new mongoose.Types.ObjectId(videoId)
-    const comObjId = new mongoose.Types.ObjectId(commentId)
-
-    const comment = await Comment.findById(comObjId)
-
-    if(!comment || !comment.video.equals(vidObjId)){
-        throw new ApiError(400, "Incorrect Comment ID");
+    if (!comment || !comment.video._id.equals(videoId)) {
+        throw new ApiError(
+            400,
+            "This comment does not exist for particular video"
+        );
     }
 
-    const deletedLike = await Like.findOneAndDelete(
-        {
-            likedBy: userObjId,
-            comment: comObjId
-        }
-    )
+    let like = await Like.findOneAndDelete({
+        likedBy: userId,
+        comment: commentId,
+    });
 
-    try {
-        if(deletedLike){
-            return res
-            .status(200)
-            .json(new ApiResponse(200, "Successfully deleted like", deletedLike))
-        } else {
-            const like = Like.create({
-                likedBy: userObjId,
-                comment: comObjId
-            })
+    let message = "";
 
-            return res
-            .status(200)
-            .json(new ApiResponse(200, "Succesfully liked the comment", like))
-        }
+    if (like) {
+        message = `Removed like from comment: ${comment.content} on video: ${comment.video.title}`;
+    } else {
+        // Remove the dislike from comment, if the user has already disliked the comment
+        await Dislike.findOneAndDelete({
+            dislikedBy: userId,
+            comment: commentId,
+        });
 
-    } catch (error) {
-        throw new ApiError(500, "Internal Server Error")
+        like = await Like.create({
+            likedBy: userId,
+            comment: commentId,
+        });
+
+        message = `Added like to the comment: ${comment.content}  on video: ${comment.video.title}`;
     }
-})
+
+    if (!like) {
+        throw new ApiError(500, "Error in updating likes on comment");
+    }
+
+    return res.status(200).json(new ApiResponse(200, message, like));
+});
 
 const toggleTweetLikes = asyncHandler(async (req, res) => {
-    const userId = req?.user?._id
-    const { tweetId } = req.params
+    const userId = req?.user?._id;
+    const { tweetId } = req.params;
 
-    if(!userId) throw new ApiError(401, "Cannot find User ID")
-    if(!tweetId || !isValidObjectId(tweetId)) throw new ApiError(400, "Invalid Tweet ID")
+    if (!userId) throw new ApiError(401, "Cannot find User ID");
+    if (!tweetId || !isValidObjectId(tweetId))
+        throw new ApiError(400, "Invalid Tweet ID");
 
-    const userObjID = new mongoose.Types.ObjectId(userId)
-    const tweetObjID = new mongoose.Types.ObjectId(tweetId)
+    const tweetObjID = new mongoose.Types.ObjectId(tweetId);
 
-    const deletedLike = await Like.findOneAndDelete(
-        {
-            likedBy: userObjID,
-            tweet: tweetObjID
-        }
-    )
+    let like = await Like.findOneAndDelete({
+        likedBy: userId,
+        tweet: tweetObjID,
+    }).populate('tweet');
 
-    try {
-        if(deletedLike){
-            return res
-            .status(200)
-            .json(new ApiResponse(200, "Successfully deleted like", deletedLike))
-        } else {
-
-            const like = await Like.create({
-                likedBy: userObjID,
+    let message = ""
+    if (like) {
+        message = `Successfully removed like from tweet: ${like?.tweet?.content || "No Content"}`
+    } else {
+        // Check if the user has disliked the tweet, and if yes, remove that dislike and then like the tweet
+        await Dislike.findOneAndDelete(
+            {
+                dislikedBy: userId,
                 tweet: tweetObjID
-            })
+            }
+        )
 
-            const updatedLike = await Like.findById(like._id).populate('tweet')
+        like = await Like.create({
+            likedBy: userId,
+            tweet: tweetObjID,
+        });
 
-            return res
-            .status(200)
-            .json(new ApiResponse(200, "Succesfully liked the tweet: "+updatedLike.tweet.content, updatedLike))
-        }
+        await like.populate('tweet')
 
-    } catch (error) {
-        throw new ApiError(500, "Internal Server Error")
+        message = `Liked the tweet: ${like?.tweet?.content || "No Content"}`
     }
-})
-export {
-    toggleVideoLike,
-    toggleCommentLike,
-    toggleTweetLikes
-}
+
+    if(!like){
+        throw new ApiError(500, "Error in updating likes in the tweet")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, message, like))
+});
+
+
+export { toggleVideoLike, toggleCommentLike, toggleTweetLikes };
