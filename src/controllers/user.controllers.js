@@ -104,6 +104,8 @@ const userRegister = asyncHandler(async (req, res) => {
         password: password,
     });
 
+    console.log("User Created in MongoDB")
+
     // Check whether the user is created or not
     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken" // Remove password and refresh Token by using select(), add ' - ' before the field name that needs to be excluded
