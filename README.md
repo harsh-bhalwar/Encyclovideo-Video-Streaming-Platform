@@ -377,11 +377,3 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 - **Cloudinary** for cloud media management
 - **JWT** for secure authentication
 
-## 📞 Support
-
-If you have any questions or need help with the project, please open an issue on GitHub or contact the maintainers.
-
----
-
-**Happy Coding! 🎉**
-
